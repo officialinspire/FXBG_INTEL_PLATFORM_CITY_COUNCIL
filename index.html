@@ -1,0 +1,1950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>FXBG Intel Platform - Network Analysis</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+            background: #0a0e1a;
+            color: #00d9ff;
+            overflow: hidden;
+            height: 100vh;
+            position: relative;
+            touch-action: none;
+        }
+
+        /* Tactical grid background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 217, 255, 0.03) 2px, rgba(0, 217, 255, 0.03) 4px),
+                repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0, 217, 255, 0.03) 2px, rgba(0, 217, 255, 0.03) 4px),
+                repeating-linear-gradient(0deg, transparent, transparent 50px, rgba(0, 217, 255, 0.08) 50px, rgba(0, 217, 255, 0.08) 51px),
+                repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(0, 217, 255, 0.08) 50px, rgba(0, 217, 255, 0.08) 51px);
+            background-size: 100% 100%;
+            z-index: -1;
+        }
+
+        /* Corner brackets overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 2px solid rgba(0, 217, 255, 0.3);
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* Tactical corner decorations - mobile optimized */
+        .tactical-corner {
+            position: fixed;
+            width: 30px;
+            height: 30px;
+            border: 2px solid #00d9ff;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .tactical-corner.top-left {
+            top: 0;
+            left: 0;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .tactical-corner.top-right {
+            top: 0;
+            right: 0;
+            border-left: none;
+            border-bottom: none;
+        }
+
+        .tactical-corner.bottom-left {
+            bottom: 0;
+            left: 0;
+            border-right: none;
+            border-top: none;
+        }
+
+        .tactical-corner.bottom-right {
+            bottom: 0;
+            right: 0;
+            border-left: none;
+            border-top: none;
+        }
+
+        @keyframes scanline {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+
+        /* Scanline effect */
+        .scanline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(to bottom, transparent, #00d9ff, transparent);
+            opacity: 0.3;
+            animation: scanline 4s linear infinite;
+            pointer-events: none;
+            z-index: 9998;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Header - mobile optimized */
+        .header {
+            background: linear-gradient(180deg, rgba(0, 20, 40, 0.95) 0%, rgba(10, 14, 26, 0.95) 100%);
+            border-bottom: 1px solid #00d9ff;
+            border-top: 3px solid #00d9ff;
+            padding: 8px 15px;
+            box-shadow: 0 2px 10px rgba(0, 217, 255, 0.4), inset 0 1px 0 rgba(0, 217, 255, 0.2);
+            position: relative;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #00d9ff, transparent);
+            animation: headerScan 3s ease-in-out infinite;
+        }
+
+        @keyframes headerScan {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        .header h1 {
+            font-size: 1em;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #00d9ff;
+            text-shadow: 0 0 10px rgba(0, 217, 255, 0.8);
+            margin-bottom: 3px;
+        }
+
+        .header h1::before {
+            content: '⬢ ';
+            color: #ff6b00;
+            margin-right: 5px;
+        }
+
+        .header p {
+            color: #66b3cc;
+            font-size: 0.65em;
+            margin-top: 2px;
+            letter-spacing: 1px;
+            font-weight: 300;
+        }
+
+        /* Controls - mobile optimized for landscape */
+        .controls {
+            background: linear-gradient(180deg, rgba(10, 20, 35, 0.98) 0%, rgba(5, 10, 20, 0.98) 100%);
+            padding: 6px 10px;
+            border-bottom: 1px solid rgba(0, 217, 255, 0.3);
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            box-shadow: inset 0 1px 0 rgba(0, 217, 255, 0.1);
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 6px;
+            background: rgba(0, 217, 255, 0.05);
+            border-left: 2px solid #00d9ff;
+            white-space: nowrap;
+        }
+
+        .control-group label {
+            font-size: 0.6em;
+            color: #00d9ff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        select, button {
+            background: linear-gradient(180deg, rgba(0, 40, 60, 0.8) 0%, rgba(0, 20, 35, 0.9) 100%) !important;
+            color: #00d9ff !important;
+            border: 1px solid rgba(0, 217, 255, 0.5);
+            padding: 6px 12px;
+            font-family: 'Segoe UI', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.7em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        select option {
+            background: rgba(5, 15, 25, 0.98) !important;
+            color: #00d9ff !important;
+            padding: 10px;
+            border: 1px solid rgba(0, 217, 255, 0.3);
+        }
+
+        select option:hover {
+            background: rgba(0, 40, 60, 0.95) !important;
+            color: #ff6b00 !important;
+        }
+
+        select option:checked {
+            background: linear-gradient(90deg, rgba(0, 60, 90, 0.9), rgba(0, 40, 60, 0.9)) !important;
+            color: #ff6b00 !important;
+        }
+
+        select::before, button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 217, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        select:hover::before, button:hover::before,
+        select:active::before, button:active::before {
+            left: 100%;
+        }
+
+        select:hover, button:hover,
+        select:active, button:active {
+            border-color: #00d9ff;
+            box-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        /* Main canvas area */
+        .main-content {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #networkCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+            touch-action: none;
+        }
+
+        #networkCanvas:active {
+            cursor: grabbing;
+        }
+
+        /* Political Spectrum Overlay */
+        .spectrum-overlay {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 20, 40, 0.95);
+            border: 2px solid #00d9ff;
+            border-radius: 8px;
+            padding: 15px 25px;
+            display: none;
+            z-index: 9996;
+            box-shadow: 0 4px 20px rgba(0, 217, 255, 0.4);
+        }
+
+        .spectrum-overlay.active {
+            display: block;
+        }
+
+        .spectrum-title {
+            color: #00d9ff;
+            font-size: 0.8em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .spectrum-bar {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            height: 30px;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 217, 255, 0.5);
+        }
+
+        .spectrum-section {
+            flex: 1;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65em;
+            font-weight: 600;
+            letter-spacing: 1px;
+            border-right: 1px solid rgba(0, 217, 255, 0.3);
+        }
+
+        .spectrum-section:last-child {
+            border-right: none;
+        }
+
+        .spectrum-progressive {
+            background: linear-gradient(90deg, #0066cc, #0088ff);
+            color: white;
+        }
+
+        .spectrum-moderate {
+            background: linear-gradient(90deg, #00aaff, #00cccc);
+            color: white;
+        }
+
+        .spectrum-independent {
+            background: linear-gradient(90deg, #9966ff, #aa77ff);
+            color: white;
+        }
+
+        .spectrum-conservative {
+            background: linear-gradient(90deg, #ff6b00, #ff8833);
+            color: white;
+        }
+
+        /* Mobile optimized side panel */
+        .side-panel {
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: 85%;
+            max-width: 400px;
+            height: 100vh;
+            background: linear-gradient(135deg, rgba(0, 20, 40, 0.98) 0%, rgba(10, 14, 26, 0.98) 100%);
+            border-left: 2px solid #00d9ff;
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -5px 0 25px rgba(0, 0, 0, 0.8);
+        }
+
+        .side-panel:not(.panel-closed) {
+            transform: translateX(0);
+        }
+
+        .panel-header {
+            background: linear-gradient(180deg, rgba(0, 40, 60, 0.9) 0%, rgba(0, 20, 35, 0.9) 100%);
+            padding: 12px 15px;
+            border-bottom: 2px solid #00d9ff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 217, 255, 0.3);
+        }
+
+        .panel-header h2 {
+            font-size: 1em;
+            color: #00d9ff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .close-btn {
+            background: rgba(255, 107, 0, 0.2);
+            border: 1px solid #ff6b00;
+            color: #ff6b00;
+            width: 36px;
+            height: 36px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            touch-action: manipulation;
+        }
+
+        .close-btn:hover,
+        .close-btn:active {
+            background: rgba(255, 107, 0, 0.4);
+            transform: rotate(90deg);
+        }
+
+        /* Member details - mobile optimized */
+        .member-details {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .member-details::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .member-details::-webkit-scrollbar-track {
+            background: rgba(0, 217, 255, 0.1);
+        }
+
+        .member-details::-webkit-scrollbar-thumb {
+            background: rgba(0, 217, 255, 0.5);
+            border-radius: 3px;
+        }
+
+        .detail-header {
+            background: linear-gradient(135deg, rgba(0, 40, 60, 0.6) 0%, rgba(0, 20, 35, 0.6) 100%);
+            padding: 15px;
+            border-left: 4px solid #ff6b00;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .detail-header h2 {
+            color: #00d9ff;
+            font-size: 1.3em;
+            margin-bottom: 8px;
+            text-shadow: 0 0 10px rgba(0, 217, 255, 0.6);
+        }
+
+        .detail-header .title {
+            color: #ff6b00;
+            font-size: 0.9em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Profile image styling */
+        .profile-image {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 3px solid #00d9ff;
+            margin: 10px auto;
+            display: block;
+            object-fit: cover;
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.5);
+        }
+
+        .detail-section {
+            background: rgba(0, 217, 255, 0.03);
+            padding: 12px;
+            margin-bottom: 15px;
+            border-left: 3px solid rgba(0, 217, 255, 0.5);
+            border-radius: 4px;
+        }
+
+        .detail-section h3 {
+            color: #00d9ff;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid rgba(0, 217, 255, 0.2);
+            padding-bottom: 5px;
+        }
+
+        .detail-section p, .detail-section li {
+            color: #a8c5d1;
+            font-size: 0.8em;
+            line-height: 1.6;
+            margin-bottom: 6px;
+        }
+
+        .detail-section ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .detail-section li {
+            padding-left: 15px;
+            position: relative;
+        }
+
+        .detail-section li::before {
+            content: '▸';
+            position: absolute;
+            left: 0;
+            color: #00d9ff;
+        }
+
+        .detail-section a {
+            color: #00d9ff;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(0, 217, 255, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .detail-section a:hover,
+        .detail-section a:active {
+            color: #ff6b00;
+            border-bottom-color: #ff6b00;
+        }
+
+        /* Tooltip - mobile optimized */
+        .tooltip {
+            position: fixed;
+            background: rgba(0, 20, 40, 0.98);
+            border: 2px solid #00d9ff;
+            border-radius: 6px;
+            padding: 10px 15px;
+            color: #00d9ff;
+            pointer-events: none;
+            z-index: 9997;
+            display: none;
+            box-shadow: 0 4px 15px rgba(0, 217, 255, 0.4);
+            max-width: 200px;
+        }
+
+        .tooltip h4 {
+            font-size: 0.9em;
+            margin-bottom: 4px;
+            color: #00d9ff;
+        }
+
+        .tooltip p {
+            font-size: 0.7em;
+            color: #66b3cc;
+            margin: 0;
+        }
+
+        /* Hidden file input */
+        #fileInput {
+            display: none;
+        }
+
+        /* Landscape orientation specific optimizations */
+        @media screen and (orientation: landscape) and (max-height: 500px) {
+            .header h1 {
+                font-size: 0.9em;
+            }
+            .header p {
+                font-size: 0.6em;
+            }
+            .controls {
+                padding: 4px 8px;
+            }
+            .control-group {
+                padding: 2px 4px;
+            }
+            select, button {
+                padding: 4px 8px;
+                font-size: 0.65em;
+            }
+            .panel-header {
+                padding: 8px 12px;
+            }
+            .detail-section {
+                padding: 8px;
+                margin-bottom: 10px;
+            }
+        }
+
+        /* Touch-friendly adjustments */
+        @media (hover: none) and (pointer: coarse) {
+            select, button {
+                min-height: 44px;
+                min-width: 44px;
+            }
+            .close-btn {
+                min-width: 44px;
+                min-height: 44px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Tactical corners -->
+    <div class="tactical-corner top-left"></div>
+    <div class="tactical-corner top-right"></div>
+    <div class="tactical-corner bottom-left"></div>
+    <div class="tactical-corner bottom-right"></div>
+    
+    <!-- Scanline effect -->
+    <div class="scanline"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>FXBG Intel Platform</h1>
+            <p>Tactical Intelligence Analysis System</p>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <div class="control-group">
+                <label>SORT:</label>
+                <select id="sortType">
+                    <option value="chain">Chain of Command</option>
+                    <option value="business">Business Connections</option>
+                    <option value="family">Family Connections</option>
+                    <option value="nonprofit">Non-Profit Connections</option>
+                    <option value="political">Political Spectrum</option>
+                </select>
+            </div>
+            <button id="expandAll">▼ EXPAND</button>
+            <button id="collapseAll">▲ COLLAPSE</button>
+            <button id="resetView">⟲ RESET</button>
+            <button id="exportBtn">⬇ EXPORT</button>
+            <button id="importBtn">⬆ IMPORT</button>
+        </div>
+
+        <!-- Main canvas area -->
+        <div class="main-content">
+            <canvas id="networkCanvas"></canvas>
+        </div>
+
+        <!-- Political Spectrum Overlay -->
+        <div class="spectrum-overlay" id="spectrumOverlay">
+            <div class="spectrum-title">Political Spectrum Guide</div>
+            <div class="spectrum-bar">
+                <div class="spectrum-section spectrum-progressive">PROGRESSIVE</div>
+                <div class="spectrum-section spectrum-moderate">MODERATE</div>
+                <div class="spectrum-section spectrum-independent">INDEPENDENT</div>
+                <div class="spectrum-section spectrum-conservative">CONSERVATIVE</div>
+            </div>
+        </div>
+
+        <!-- Tooltip -->
+        <div class="tooltip" id="tooltip">
+            <h4></h4>
+            <p></p>
+        </div>
+
+        <!-- Side panel for member details -->
+        <div class="side-panel panel-closed" id="sidePanel">
+            <div class="panel-header">
+                <h2>MEMBER INTEL</h2>
+                <button class="close-btn" id="closePanel">✕</button>
+            </div>
+            <div class="member-details" id="memberDetails">
+                <p style="text-align: center; color: #66b3cc; padding: 40px 20px;">
+                    Select a node to view detailed intelligence
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="fileInput" accept=".json,.csv,.txt">
+
+    <script>
+        const canvas = document.getElementById('networkCanvas');
+        const ctx = canvas.getContext('2d');
+        const sortSelect = document.getElementById('sortType');
+        const sidePanel = document.getElementById('sidePanel');
+        const memberDetails = document.getElementById('memberDetails');
+        const closePanel = document.getElementById('closePanel');
+        const tooltip = document.getElementById('tooltip');
+        const spectrumOverlay = document.getElementById('spectrumOverlay');
+
+        let scale = 1;
+        let panX = 0;
+        let panY = 0;
+        let isDragging = false;
+        let dragNode = null;
+        let isPanning = false;
+        let lastPanX = 0;
+        let lastPanY = 0;
+        let nodes = [];
+        let connections = [];
+        let imageCache = {};
+
+        // Touch handling variables
+        let lastTouchDistance = 0;
+        let lastTouchX = 0;
+        let lastTouchY = 0;
+
+        // Preload images
+        function preloadImage(url) {
+            if (!url || url === '' || imageCache[url]) return;
+            
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function() {
+                imageCache[url] = img;
+                drawNetwork(); // Redraw when image loads
+            };
+            img.onerror = function() {
+                console.log('Image failed to load:', url);
+                imageCache[url] = null;
+            };
+            img.src = url;
+        }
+
+        const councilData = {
+            members: [
+                {
+                    id: 1,
+                    name: "Kerry P. Devine",
+                    displayName: "Devine",
+                    title: "Mayor (At-Large)",
+                    position: "Mayor",
+                    website: "https://www.fredericksburgva.gov/691/Kerry-P-Devine-Mayor",
+                    imageUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23003d5c' width='100' height='100'/%3E%3Ctext x='50' y='50' font-family='Arial' font-size='40' fill='%2300d9ff' text-anchor='middle' dy='.3em'%3EKD%3C/text%3E%3C/svg%3E",
+                    socialMedia: {
+                        facebook: "https://www.facebook.com/MayorDevine",
+                        twitter: "",
+                        linkedin: ""
+                    },
+                    addresses: "Fredericksburg, VA (Westmont/College Heights area)",
+                    properties: "Primary residence in Fredericksburg city limits",
+                    affiliations: [
+                        "Friends of the Rappahannock (Founding Board)|https://riverfriends.org/",
+                        "Empowerhouse (Volunteer)|https://www.empowerhouseva.org/",
+                        "Central Rappahannock Regional Library Board|https://www.librarypoint.org/",
+                        "Fredericksburg Arts Commission|https://www.fredericksburgva.gov/",
+                        "UMW Town & Gown Committee|https://www.umw.edu/",
+                        "Clean & Green Commission|https://www.fredericksburgva.gov/"
+                    ],
+                    education: "Mary Washington College (now UMW), B.A.|https://www.umw.edu/",
+                    political: "Non-partisan (city race)",
+                    politicalSpectrum: "Progressive",
+                    spectrumValue: 1,
+                    voting: [
+                        "Supported data center overlay district (2025)",
+                        "Voted for Jeremiah Community homeless housing (2025)",
+                        "Supported removing slave auction block (2020)",
+                        "Voted for capital improvements: schools, police station, trails",
+                        "Generally votes with council majority on budgets and development"
+                    ],
+                    criminal: "None",
+                    background: "Long-time educator (Walker-Grant Middle School, Colonial Forge High School). Served on School Board 1996-2004, City Council since 2004. Elected Mayor 2024. Mother of four, grandmother. Widowed 1996. Focus on education, historic preservation, smart growth.",
+                    businessConnections: [
+                        "Fredericksburg Regional Alliance|https://www.fredericksburgalliance.org/",
+                        "Mary Washington College/UMW|https://www.umw.edu/"
+                    ],
+                    familyConnections: [
+                        "Four adult children (all Virginia university graduates)",
+                        "Grandchildren",
+                        "Late husband Michael Devine (d. 1996)",
+                        "School Board connection: Former colleague of Kisha Frye"
+                    ],
+                    nonprofitConnections: [
+                        "Friends of the Rappahannock|https://riverfriends.org/",
+                        "Empowerhouse|https://www.empowerhouseva.org/",
+                        "Tree Fredericksburg|https://treefredericksburg.org/"
+                    ]
+                },
+                {
+                    id: 2,
+                    name: "Charlie L. Frye Jr.",
+                    displayName: "Frye",
+                    title: "Vice-Mayor (Ward 4)",
+                    position: "Vice-Mayor",
+                    website: "https://www.fredericksburgva.gov/674/Charlie-L-Frye-Jr-Ward-4",
+                    imageUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23003d5c' width='100' height='100'/%3E%3Ctext x='50' y='50' font-family='Arial' font-size='40' fill='%2300d9ff' text-anchor='middle' dy='.3em'%3ECF%3C/text%3E%3C/svg%3E",
+                    socialMedia: {
+                        facebook: "https://www.facebook.com/CouncilmanChuckFryeJr",
+                        twitter: "",
+                        linkedin: ""
+                    },
+                    addresses: "201 Howison Avenue, Fredericksburg, VA 22401 (Mayfield)",
+                    properties: "Residence in Mayfield (Ward 4)",
+                    affiliations: [
+                        "Teamsters Local 322 (24-year member)|https://teamster.org/",
+                        "Sunshine Baseball League (founder)|https://www.fredericksburgva.gov/",
+                        "Parks & Recreation (youth coach)|https://www.fredericksburgva.gov/",
+                        "Germanna CC - Gladys Todd Scholarship Board|https://www.germanna.edu/",
+                        "Fredericksburg Housing Advisory Committee|https://www.fredericksburgva.gov/",
+                        "Virginia Municipal League Executive Committee|https://www.vml.org/"
+                    ],
+                    education: "James Monroe High School (1996)|https://www.fxbgschools.us/jmhs",
+                    political: "Independent",
+                    politicalSpectrum: "Moderate",
+                    spectrumValue: 2,
+                    voting: [
+                        "Led campaign to remove slave auction block (2017-2020)",
+                        "Championed Dr. MLK Jr. bridge naming",
+                        "Supported gun give-back program",
+                        "Voted for data center overlay with protections (2025)",
+                        "Supported Jeremiah Community housing (2025)"
+                    ],
+                    criminal: "None",
+                    background: "Fredericksburg native raised in Mayfield/Bragg Hill. UPS driver since 2001. Elected to Council 2014, Vice-Mayor 2020. Community organizer focused on youth programs, racial justice, affordable housing.",
+                    businessConnections: [
+                        "UPS (package delivery driver)|https://www.ups.com/",
+                        "Teamsters Local 322|https://teamster.org/"
+                    ],
+                    familyConnections: [
+                        "Wife: Dr. Kisha Frye (Assistant Principal, Walker-Grant Middle)",
+                        "Three children",
+                        "School Board connection: Spouse of Kisha Frye"
+                    ],
+                    nonprofitConnections: [
+                        "NAACP Fredericksburg|https://www.naacpva.org/",
+                        "Thurman Brisben Center|https://www.thurbanbrisben.org/"
+                    ]
+                },
+                {
+                    id: 3,
+                    name: "Jannan W. Holmes",
+                    displayName: "Holmes",
+                    title: "Council Member (At-Large)",
+                    position: "Councilor At-Large",
+                    website: "https://www.fredericksburgva.gov/1944/Jannan-W-Holmes-At-Large",
+                    imageUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23003d5c' width='100' height='100'/%3E%3Ctext x='50' y='50' font-family='Arial' font-size='40' fill='%2300d9ff' text-anchor='middle' dy='.3em'%3EJH%3C/text%3E%3C/svg%3E",
+                    socialMedia: {
+                        facebook: "https://www.facebook.com/JannanHolmesForFredericksburg",
+                        twitter: "",
+                        linkedin: ""
+                    },
+                    addresses: "Westmont/College Heights, Fredericksburg, VA",
+                    properties: "Residence in Westmont, riverfront cabin in King George",
+                    affiliations: [
+                        "RCASA - 9 years on board|https://rcasa.org/",
+                        "FAHASS|https://www.fahass.org/",
+                        "Empowerhouse|https://www.empowerhouseva.org/",
+                        "Micah Ministries|https://micahfredericksburg.org/",
+                        "St. George's Episcopal (Vestry 3 years)|https://stgeorgesepiscopal.net/",
+                        "VA School Boards Assoc - NE Chair|https://www.vsba.org/",
+                        "Governor's Taskforce - School Health Centers|https://www.virginia.gov/"
+                    ],
+                    education: "Mary Washington College B.A., VCU M.S.W.|https://www.vcu.edu/",
+                    political: "Non-partisan",
+                    politicalSpectrum: "Moderate",
+                    spectrumValue: 2,
+                    voting: [
+                        "Voted for data center overlay (2025)",
+                        "Supported Jeremiah Community housing (2025)",
+                        "Advocates for education funding",
+                        "Supported FY2025 budget with tax increase",
+                        "Champions equity and mental health services"
+                    ],
+                    criminal: "None",
+                    background: "Licensed Clinical Social Worker with 30+ years experience. Private practice since 1998. School Board 2010-2023 (Chair/Vice-Chair). Elected Council 2024. Focus on education, mental health, social services.",
+                    businessConnections: [
+                        "Private counseling practice (LCSW)|https://www.therapist.com/"
+                    ],
+                    familyConnections: [
+                        "Husband: George 'Ted' Holmes (retired Germanna CC professor)",
+                        "Sons: Noah and Max (JM High graduates)",
+                        "Board of Social Services connection"
+                    ],
+                    nonprofitConnections: [
+                        "RCASA|https://rcasa.org/",
+                        "FAHASS|https://www.fahass.org/",
+                        "Empowerhouse|https://www.empowerhouseva.org/",
+                        "Micah Ministries|https://micahfredericksburg.org/"
+                    ]
+                },
+                {
+                    id: 4,
+                    name: "Will B. Mackintosh",
+                    displayName: "Mackintosh",
+                    title: "Council Member (At-Large)",
+                    position: "Councilor At-Large",
+                    website: "https://www.fredericksburgva.gov/1943/Will-B-Mackintosh-At-Large",
+                    imageUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23003d5c' width='100' height='100'/%3E%3Ctext x='50' y='50' font-family='Arial' font-size='35' fill='%2300d9ff' text-anchor='middle' dy='.3em'%3EWM%3C/text%3E%3C/svg%3E",
+                    socialMedia: {
+                        facebook: "https://www.facebook.com/WillMackintoshFXBG",
+                        twitter: "https://twitter.com/WillMackintosh",
+                        linkedin: "https://www.linkedin.com/in/willmackintosh"
+                    },
+                    addresses: "814 Cornell Street, Fredericksburg, VA (College Terrace)",
+                    properties: "Primary residence College Terrace, 2 historic buildings downtown",
+                    affiliations: [
+                        "UMW (History Professor)|https://www.umw.edu/",
+                        "Fredericksburg EDA (former Chair)|https://www.fredericksburgva.gov/",
+                        "Main Street Board|https://downtownfredericksburg.org/",
+                        "City/UMW Parking Task Force|https://www.fredericksburgva.gov/",
+                        "UMW Town & Gown|https://www.umw.edu/",
+                        "Arts Commission liaison|https://www.fredericksburgva.gov/",
+                        "GWRC|https://gwregion.org/"
+                    ],
+                    education: "Swarthmore B.A., U Michigan Ph.D. History|https://www.umich.edu/",
+                    political: "Non-partisan",
+                    politicalSpectrum: "Progressive",
+                    spectrumValue: 1,
+                    voting: [
+                        "Voted for data center overlay with conditions (2025)",
+                        "Champion of bike/pedestrian infrastructure",
+                        "Supported adaptive reuse and preservation",
+                        "Voted for FY2025 budget with tax increase",
+                        "Advocates smart growth and sustainability"
+                    ],
+                    criminal: "None",
+                    background: "UMW history professor since 2010. Author. Openly gay, married to Brian, two daughters. Former EDA Chair. Elected 2024. Focus on urban planning, preservation, inclusivity.",
+                    businessConnections: [
+                        "UMW|https://www.umw.edu/",
+                        "Historic property rehabilitation|https://downtownfredericksburg.org/"
+                    ],
+                    familyConnections: [
+                        "Husband: Brian (tech professional/business owner)",
+                        "Two daughters (local elementary school)"
+                    ],
+                    nonprofitConnections: [
+                        "Fredericksburg Area Museum|https://www.famva.org/",
+                        "LGBTQ Victory Fund|https://victoryfund.org/"
+                    ]
+                },
+                {
+                    id: 5,
+                    name: "Jason N. Graham",
+                    displayName: "Graham",
+                    title: "Council Member (Ward 1)",
+                    position: "Councilor Ward 1",
+                    website: "https://www.fredericksburgva.gov/670/Jason-N-Graham-Ward-1",
+                    imageUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23003d5c' width='100' height='100'/%3E%3Ctext x='50' y='50' font-family='Arial' font-size='40' fill='%2300d9ff' text-anchor='middle' dy='.3em'%3EJG%3C/text%3E%3C/svg%3E",
+                    socialMedia: {
+                        facebook: "https://www.facebook.com/JasonGrahamVA",
+                        twitter: "",
+                        linkedin: ""
+                    },
+                    addresses: "1904 Idlewild Boulevard, Fredericksburg, VA (Idlewild)",
+                    properties: "Residence in Idlewild subdivision",
+                    affiliations: [
+                        "FXBG Democratic Committee (former Chair)|https://www.fredericksburgdems.org/",
+                        "FAMPO Policy Committee|https://www.fampo.gwregion.org/",
+                        "GWRC (alternate)|https://gwregion.org/",
+                        "Friends of Rappahannock|https://riverfriends.org/",
+                        "Tree Fredericksburg|https://treefredericksburg.org/",
+                        "Idlewild HOA Finance Committee|https://www.idlewildfburg.com/"
+                    ],
+                    education: "U Missouri B.A. Journalism, U Rochester MBA|https://www.rochester.edu/",
+                    political: "Democratic",
+                    politicalSpectrum: "Progressive",
+                    spectrumValue: 1,
+                    voting: [
+                        "Led data center overlay advocacy (2025)",
+                        "Supported transportation improvements",
+                        "Voted for Jeremiah Community housing (2025)",
+                        "Pro-development with infrastructure emphasis",
+                        "Not seeking re-election (2024)"
+                    ],
+                    criminal: "None",
+                    background: "Management consultant at Booz Allen Hamilton. Appointed 2018, elected 2020. Two daughters. Focus on economic development, transportation, tech initiatives. Stepping down 2025.",
+                    businessConnections: [
+                        "Booz Allen Hamilton|https://www.boozallen.com/"
+                    ],
+                    familyConnections: [
+                        "Wife: Stephanie (marketing, healthcare)",
+                        "Daughters: Evelyn and Mirabel",
+                        "Connection to School Board via Matt Rowe"
+                    ],
+                    nonprofitConnections: [
+                        "Friends of Rappahannock|https://riverfriends.org/",
+                        "Tree Fredericksburg|https://treefredericksburg.org/",
+                        "Food Bank|https://fredfood.org/"
+                    ]
+                },
+                {
+                    id: 6,
+                    name: "Jonathan A. Gerlach",
+                    displayName: "Gerlach",
+                    title: "Council Member (Ward 2)",
+                    position: "Councilor Ward 2",
+                    website: "https://www.fredericksburgva.gov/1800/Jonathan-A-Gerlach-Ward-2",
+                    imageUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23003d5c' width='100' height='100'/%3E%3Ctext x='50' y='50' font-family='Arial' font-size='40' fill='%2300d9ff' text-anchor='middle' dy='.3em'%3EJG%3C/text%3E%3C/svg%3E",
+                    socialMedia: {
+                        facebook: "https://www.facebook.com/JonGerlachFXBG",
+                        twitter: "",
+                        linkedin: ""
+                    },
+                    addresses: "809 Charlotte Street, Fredericksburg, VA (Downtown)",
+                    properties: "Charlotte St residence, 615 Caroline St (law office)",
+                    affiliations: [
+                        "Gerlach Law Firm PLC|http://www.gerlachlawfirm.com/",
+                        "FXBG ARB (former Chairman)|https://www.fredericksburgva.gov/",
+                        "NAACP - Legal Redress Chair|https://www.naacpva.org/",
+                        "FXBG Area Museum Board|https://www.famva.org/",
+                        "Heritage Center Board|https://www.crhcarchives.org/",
+                        "GWRC|https://gwregion.org/",
+                        "R-Board|https://www.r-board.org/",
+                        "Rappahannock River Basin Commission|https://www.rrbc.state.va.us/",
+                        "Main Street liaison|https://downtownfredericksburg.org/",
+                        "Fossil Free FXBG|https://www.facebook.com/FossilFreeFredericksburg/",
+                        "Front Porch columnist|https://frontporchfredericksburg.com/"
+                    ],
+                    education: "U Pittsburgh B.A., ASU M.A. Archaeology, U Richmond J.D.|https://www.richmond.edu/",
+                    political: "Independent",
+                    politicalSpectrum: "Progressive",
+                    spectrumValue: 1,
+                    voting: [
+                        "Voted for data center with safeguards (2025)",
+                        "Championed archaeology ordinance (2023)",
+                        "Supported clean energy goals",
+                        "Advocated transparency/ethics improvements",
+                        "Stepped down 2025 (succeeded by Joy Crump)"
+                    ],
+                    criminal: "None",
+                    background: "Attorney and archaeologist. Moved to FXBG 2008. Boutique law practice. Elected Ward 2 2022-2025. Artist, writer, kayaker. Focus on preservation, environment, social justice.",
+                    businessConnections: [
+                        "Gerlach Law Firm PLC|http://www.gerlachlawfirm.com/"
+                    ],
+                    familyConnections: [
+                        "Partner: Mitzi Brown (retired federal employee)"
+                    ],
+                    nonprofitConnections: [
+                        "NAACP|https://www.naacpva.org/",
+                        "FXBG Area Museum|https://www.famva.org/",
+                        "Friends of Rappahannock|https://riverfriends.org/",
+                        "Heritage Center|https://www.crhcarchives.org/",
+                        "Food Co-Op|https://www.fredericksburgfoodcoop.com/"
+                    ]
+                },
+                {
+                    id: 7,
+                    name: "Susanna R. Finn",
+                    displayName: "Finn",
+                    title: "Council Member (Ward 3)",
+                    position: "Councilor Ward 3",
+                    website: "https://www.fredericksburgva.gov/2098/Susanna-R-Finn-Ward-3",
+                    imageUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23003d5c' width='100' height='100'/%3E%3Ctext x='50' y='50' font-family='Arial' font-size='40' fill='%2300d9ff' text-anchor='middle' dy='.3em'%3ESF%3C/text%3E%3C/svg%3E",
+                    socialMedia: {
+                        facebook: "https://www.facebook.com/SusannaFinnFXBG",
+                        twitter: "",
+                        linkedin: ""
+                    },
+                    addresses: "Great Oaks subdivision, Fredericksburg, VA (Ward 3)",
+                    properties: "Residence in Great Oaks",
+                    affiliations: [
+                        "FXBG Planning Commission (Chair)|https://www.fredericksburgva.gov/",
+                        "Great Oaks HOA (former board)|https://www.fredericksburgva.gov/",
+                        "DoD (civilian contractor)|https://www.defense.gov/",
+                        "APA Virginia (AICP)|https://www.apa-va.org/"
+                    ],
+                    education: "UMW B.A. Historic Preservation, VCU M.U.R.P.|https://www.vcu.edu/",
+                    political: "Non-partisan",
+                    politicalSpectrum: "Moderate",
+                    spectrumValue: 2,
+                    voting: [
+                        "Voted for data center overlay (first vote Feb 2025)",
+                        "Championed housing affordability task force",
+                        "Removed SUP for in-home daycares (2025)",
+                        "Supported infrastructure investments",
+                        "Advocates smart planning and adaptive reuse"
+                    ],
+                    criminal: "None",
+                    background: "Urban planner. Former City Community Development Planner. DoD contractor. Planning Commission Chair 2023. Appointed Ward 3 Feb 2025, elected Nov 2025. Two children. Focus on housing, childcare, growth.",
+                    businessConnections: [
+                        "DoD contractor|https://www.defense.gov/"
+                    ],
+                    familyConnections: [
+                        "Husband: Daniel Finn (IT, Dahlgren Navy base)",
+                        "Two young children"
+                    ],
+                    nonprofitConnections: [
+                        "Micah Ministries (liaison)|https://micahfredericksburg.org/"
+                    ]
+                },
+                {
+                    id: 8,
+                    name: "Kelly J. Lackey",
+                    displayName: "Lackey",
+                    title: "City Attorney",
+                    position: "City Attorney",
+                    website: "https://www.fredericksburgva.gov/290/City-Attorney",
+                    imageUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23003d5c' width='100' height='100'/%3E%3Ctext x='50' y='50' font-family='Arial' font-size='40' fill='%2300a8ff' text-anchor='middle' dy='.3em'%3EKL%3C/text%3E%3C/svg%3E",
+                    socialMedia: {
+                        facebook: "",
+                        twitter: "",
+                        linkedin: ""
+                    },
+                    addresses: "Office: 601 Caroline Street, Fredericksburg, VA",
+                    properties: "N/A (appointed, residency not required)",
+                    affiliations: [
+                        "LGA Virginia (Board, Vice President)|https://www.lgavirginia.org/",
+                        "VA State Bar - Professionalism Faculty|https://www.vsb.org/"
+                    ],
+                    education: "College of Holy Cross B.A., William & Mary J.D.|https://www.wm.edu/",
+                    political: "N/A (appointed)",
+                    politicalSpectrum: "Non-partisan",
+                    spectrumValue: 2,
+                    voting: "N/A",
+                    criminal: "None",
+                    background: "Experienced municipal attorney (15+ years). Former Asst City Attorney Chesapeake. King George County Attorney 2021-2024. Joined FXBG as Special Projects Counsel Feb 2024, appointed City Attorney May 2024. Advises Council, Manager, departments.",
+                    businessConnections: [
+                        "City of Fredericksburg|https://www.fredericksburgva.gov/"
+                    ],
+                    familyConnections: [],
+                    nonprofitConnections: []
+                },
+                {
+                    id: 9,
+                    name: "Timothy J. Baroody",
+                    displayName: "Baroody",
+                    title: "City Manager",
+                    position: "City Manager",
+                    website: "https://www.fredericksburgva.gov/289/City-Manager",
+                    imageUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23003d5c' width='100' height='100'/%3E%3Ctext x='50' y='50' font-family='Arial' font-size='40' fill='%23ffd000' text-anchor='middle' dy='.3em'%3ETB%3C/text%3E%3C/svg%3E",
+                    socialMedia: {
+                        facebook: "",
+                        twitter: "",
+                        linkedin: "https://www.linkedin.com/in/timbaroody"
+                    },
+                    addresses: "Office: 715 Princess Anne Street, Fredericksburg, VA",
+                    properties: "N/A (appointed)",
+                    affiliations: [
+                        "ICMA|https://icma.org/",
+                        "VA Local Govt Management Assoc|https://www.vlgma.org/"
+                    ],
+                    education: "Public administration credentials",
+                    political: "N/A (appointed)",
+                    politicalSpectrum: "Non-partisan",
+                    spectrumValue: 2,
+                    voting: "N/A",
+                    criminal: "None",
+                    background: "Professional city manager overseeing day-to-day operations. Manages departments, implements Council policies, prepares budgets. Long career in municipal management. Works with Mayor and Council on strategic initiatives.",
+                    businessConnections: [
+                        "City of Fredericksburg|https://www.fredericksburgva.gov/"
+                    ],
+                    familyConnections: [],
+                    nonprofitConnections: []
+                },
+                {
+                    id: 10,
+                    name: "Josh Summits",
+                    displayName: "Summits",
+                    title: "Director, Economic Dev & Tourism",
+                    position: "City Official",
+                    website: "https://www.fredericksburgva.gov/",
+                    imageUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23003d5c' width='100' height='100'/%3E%3Ctext x='50' y='50' font-family='Arial' font-size='40' fill='%23ffd000' text-anchor='middle' dy='.3em'%3EJS%3C/text%3E%3C/svg%3E",
+                    socialMedia: {
+                        facebook: "",
+                        twitter: "",
+                        linkedin: "https://www.linkedin.com/in/joshsummits"
+                    },
+                    addresses: "Office: Fredericksburg City Hall",
+                    properties: "N/A",
+                    affiliations: [
+                        "FXBG Regional Alliance|https://www.fredericksburgalliance.org/",
+                        "VA Economic Developers Assoc|https://www.vedp.org/"
+                    ],
+                    education: "Economic development credentials",
+                    political: "N/A (appointed)",
+                    politicalSpectrum: "Non-partisan",
+                    spectrumValue: 2,
+                    voting: "N/A",
+                    criminal: "None",
+                    background: "Leads economic development for City. Business recruitment, retention, tourism. Works on data centers, downtown revitalization, workforce development.",
+                    businessConnections: [
+                        "City of Fredericksburg|https://www.fredericksburgva.gov/",
+                        "FXBG Regional Alliance|https://www.fredericksburgalliance.org/"
+                    ],
+                    familyConnections: [],
+                    nonprofitConnections: []
+                },
+                {
+                    id: 11,
+                    name: "Susan Spears",
+                    displayName: "Spears",
+                    title: "President & CEO, Chamber of Commerce",
+                    position: "City Official",
+                    website: "https://www.fredericksburgchamber.org/",
+                    imageUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23003d5c' width='100' height='100'/%3E%3Ctext x='50' y='50' font-family='Arial' font-size='40' fill='%23ffd000' text-anchor='middle' dy='.3em'%3ESS%3C/text%3E%3C/svg%3E",
+                    socialMedia: {
+                        facebook: "https://www.facebook.com/FXBGChamber",
+                        twitter: "",
+                        linkedin: "https://www.linkedin.com/in/susanspears"
+                    },
+                    addresses: "Office: 2300 Fall Hill Avenue, Fredericksburg, VA",
+                    properties: "N/A",
+                    affiliations: [
+                        "FXBG Regional Chamber|https://www.fredericksburgchamber.org/",
+                        "VA Chamber of Commerce|https://www.vachamber.com/"
+                    ],
+                    education: "Business leadership credentials",
+                    political: "N/A (business leader)",
+                    politicalSpectrum: "Non-partisan",
+                    spectrumValue: 2,
+                    voting: "N/A",
+                    criminal: "None",
+                    background: "Leads FXBG Regional Chamber of Commerce. Represents business community. Advocates pro-business policies, economic development, workforce. Interfaces with Council on business climate.",
+                    businessConnections: [
+                        "FXBG Regional Chamber|https://www.fredericksburgchamber.org/"
+                    ],
+                    familyConnections: [],
+                    nonprofitConnections: []
+                }
+            ]
+        };
+
+        // Preload all images
+        councilData.members.forEach(member => {
+            if (member.imageUrl) {
+                preloadImage(member.imageUrl);
+            }
+        });
+
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            drawNetwork();
+        }
+
+        function initializeNodes() {
+            const sortType = sortSelect.value;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            // Show/hide spectrum overlay
+            if (sortType === 'political') {
+                spectrumOverlay.classList.add('active');
+            } else {
+                spectrumOverlay.classList.remove('active');
+            }
+            
+            nodes = councilData.members.map((member, index) => {
+                let x, y;
+                
+                if (sortType === 'chain') {
+                    // Hierarchical layout - proper chain of command
+                    if (member.position === 'Mayor') {
+                        x = centerX;
+                        y = centerY - 180;
+                    } else if (member.position === 'Vice-Mayor') {
+                        x = centerX - 120;
+                        y = centerY - 60;
+                    } else if (member.position === 'Councilor At-Large') {
+                        const offset = member.id === 3 ? -180 : (member.id === 4 ? 180 : 0);
+                        x = centerX + offset;
+                        y = centerY - 60;
+                    } else if (member.position.includes('Ward')) {
+                        const wardNum = parseInt(member.title.match(/\d+/)?.[0] || 0);
+                        x = centerX + (wardNum - 2) * 140;
+                        y = centerY + 80;
+                    } else if (member.position === 'City Manager') {
+                        x = centerX + 120;
+                        y = centerY - 60;
+                    } else if (member.position === 'City Attorney') {
+                        x = centerX;
+                        y = centerY + 80;
+                    } else {
+                        // City Officials
+                        x = centerX + (member.id - 10) * 180;
+                        y = centerY + 180;
+                    }
+                } else if (sortType === 'political') {
+                    // Political spectrum layout (left to right)
+                    const spectrumValue = member.spectrumValue || 2;
+                    const spectrumWidth = canvas.width * 0.7;
+                    const startX = centerX - spectrumWidth / 2;
+                    
+                    // Position based on spectrum value (1=progressive, 2=moderate, 3=independent, 4=conservative)
+                    x = startX + ((spectrumValue - 1) / 3) * spectrumWidth + (Math.random() - 0.5) * 60;
+                    y = centerY + (Math.random() - 0.5) * 200;
+                } else if (sortType === 'business') {
+                    // Cluster by business connections
+                    const angle = (index / councilData.members.length) * Math.PI * 2;
+                    const radius = 180 + Math.random() * 60;
+                    x = centerX + Math.cos(angle) * radius;
+                    y = centerY + Math.sin(angle) * radius;
+                } else if (sortType === 'family') {
+                    // Cluster by family connections
+                    const angle = (index / councilData.members.length) * Math.PI * 2;
+                    const radius = 170 + Math.random() * 70;
+                    x = centerX + Math.cos(angle) * radius;
+                    y = centerY + Math.sin(angle) * radius;
+                } else if (sortType === 'nonprofit') {
+                    // Cluster by nonprofit connections
+                    const angle = (index / councilData.members.length) * Math.PI * 2;
+                    const radius = 190 + Math.random() * 50;
+                    x = centerX + Math.cos(angle) * radius;
+                    y = centerY + Math.sin(angle) * radius;
+                }
+                
+                return {
+                    x,
+                    y,
+                    radius: 35,
+                    data: member,
+                    expanded: false
+                };
+            });
+
+            // Generate connections based on sort type
+            connections = [];
+            if (sortType === 'business') {
+                generateBusinessConnections();
+            } else if (sortType === 'family') {
+                generateFamilyConnections();
+            } else if (sortType === 'nonprofit') {
+                generateNonprofitConnections();
+            } else if (sortType === 'chain') {
+                generateChainOfCommandConnections();
+            } else if (sortType === 'political') {
+                // No connections for political view
+            }
+
+            drawNetwork();
+        }
+
+        function generateChainOfCommandConnections() {
+            const mayor = nodes.find(n => n.data.position === 'Mayor');
+            const viceMayor = nodes.find(n => n.data.position === 'Vice-Mayor');
+            const cityManager = nodes.find(n => n.data.position === 'City Manager');
+            const cityAttorney = nodes.find(n => n.data.position === 'City Attorney');
+
+            if (mayor && viceMayor) {
+                connections.push({ from: mayor, to: viceMayor });
+            }
+            
+            nodes.forEach(node => {
+                if (node.data.position.includes('Councilor') && mayor && node.data.position !== 'Vice-Mayor') {
+                    connections.push({ from: mayor, to: node });
+                }
+                if (node.data.position === 'City Official' && cityManager) {
+                    connections.push({ from: cityManager, to: node });
+                }
+            });
+
+            if (mayor && cityManager) {
+                connections.push({ from: mayor, to: cityManager });
+            }
+            if (mayor && cityAttorney) {
+                connections.push({ from: mayor, to: cityAttorney });
+            }
+        }
+
+        function generateBusinessConnections() {
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    const shared = nodes[i].data.businessConnections.some(bc => 
+                        nodes[j].data.businessConnections.some(bc2 => {
+                            const org1 = bc.split('|')[0].toLowerCase().trim();
+                            const org2 = bc2.split('|')[0].toLowerCase().trim();
+                            return org1 === org2 || 
+                                   org1.includes(org2) || 
+                                   org2.includes(org1);
+                        })
+                    );
+                    if (shared && nodes[i].data.businessConnections.length > 0 && nodes[j].data.businessConnections.length > 0) {
+                        connections.push({ from: nodes[i], to: nodes[j] });
+                    }
+                }
+            }
+        }
+
+        function generateFamilyConnections() {
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    const node1Family = nodes[i].data.familyConnections.map(f => f.toLowerCase());
+                    const node2Family = nodes[j].data.familyConnections.map(f => f.toLowerCase());
+                    
+                    const hasConnection = node1Family.some(f1 => 
+                        node2Family.some(f2 => {
+                            // Check for name matches or relationship keywords
+                            const keywords = ['wife', 'husband', 'spouse', 'kisha frye', 'school board'];
+                            return keywords.some(keyword => 
+                                (f1.includes(keyword) && f2.includes(keyword)) ||
+                                f1.includes(nodes[j].data.name.toLowerCase()) ||
+                                f2.includes(nodes[i].data.name.toLowerCase())
+                            );
+                        })
+                    );
+                    
+                    if (hasConnection) {
+                        connections.push({ from: nodes[i], to: nodes[j] });
+                    }
+                }
+            }
+        }
+
+        function generateNonprofitConnections() {
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    const shared = nodes[i].data.nonprofitConnections.some(nc => 
+                        nodes[j].data.nonprofitConnections.some(nc2 => {
+                            const org1 = nc.split('|')[0].toLowerCase().trim();
+                            const org2 = nc2.split('|')[0].toLowerCase().trim();
+                            return org1 === org2 || 
+                                   org1.includes(org2) || 
+                                   org2.includes(org1);
+                        })
+                    );
+                    if (shared) {
+                        connections.push({ from: nodes[i], to: nodes[j] });
+                    }
+                }
+            }
+        }
+
+        function drawNetwork() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(panX, panY);
+            ctx.scale(scale, scale);
+
+            // Draw connections
+            ctx.strokeStyle = 'rgba(0, 217, 255, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            
+            connections.forEach(conn => {
+                ctx.beginPath();
+                ctx.moveTo(conn.from.x, conn.from.y);
+                ctx.lineTo(conn.to.x, conn.to.y);
+                ctx.stroke();
+
+                // Midpoint indicator
+                const midX = (conn.from.x + conn.to.x) / 2;
+                const midY = (conn.from.y + conn.to.y) / 2;
+                ctx.fillStyle = 'rgba(0, 217, 255, 0.6)';
+                ctx.beginPath();
+                ctx.arc(midX, midY, 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            ctx.setLineDash([]);
+
+            // Draw nodes
+            nodes.forEach((node, index) => {
+                const member = node.data;
+                
+                // Determine color by position
+                let color = '#00d9ff';
+                if (member.position === 'Mayor') color = '#ff6b00';
+                else if (member.position === 'Vice-Mayor') color = '#00d9ff';
+                else if (member.position === 'City Attorney') color = '#00a8ff';
+                else if (member.position === 'City Manager' || member.position === 'City Official') color = '#ffd000';
+                
+                // Draw hexagon
+                ctx.beginPath();
+                for (let i = 0; i < 6; i++) {
+                    const angle = (Math.PI / 3) * i;
+                    const x = node.x + Math.cos(angle) * node.radius;
+                    const y = node.y + Math.sin(angle) * node.radius;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                
+                // Fill
+                const gradient = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, node.radius);
+                gradient.addColorStop(0, color + '44');
+                gradient.addColorStop(1, color + '11');
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                
+                // Border
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Profile image or initials
+                if (member.imageUrl && imageCache[member.imageUrl]) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, node.radius - 10, 0, Math.PI * 2);
+                    ctx.clip();
+                    ctx.drawImage(
+                        imageCache[member.imageUrl], 
+                        node.x - (node.radius - 10), 
+                        node.y - (node.radius - 10), 
+                        (node.radius - 10) * 2, 
+                        (node.radius - 10) * 2
+                    );
+                    ctx.restore();
+                }
+
+                // Crosshair
+                ctx.strokeStyle = color + '44';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(node.x - node.radius, node.y);
+                ctx.lineTo(node.x + node.radius, node.y);
+                ctx.moveTo(node.x, node.y - node.radius);
+                ctx.lineTo(node.x, node.y + node.radius);
+                ctx.stroke();
+
+                // Corner brackets
+                const bracketSize = 8;
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                [
+                    {x: -1, y: -1}, // top-left
+                    {x: 1, y: -1},  // top-right
+                    {x: -1, y: 1},  // bottom-left
+                    {x: 1, y: 1}    // bottom-right
+                ].forEach((corner, i) => {
+                    const bx = node.x + corner.x * (node.radius - 5);
+                    const by = node.y + corner.y * (node.radius - 5);
+                    
+                    ctx.beginPath();
+                    if (corner.x < 0) {
+                        ctx.moveTo(bx + bracketSize, by);
+                        ctx.lineTo(bx, by);
+                        ctx.lineTo(bx, by + (corner.y * bracketSize));
+                    } else {
+                        ctx.moveTo(bx - bracketSize, by);
+                        ctx.lineTo(bx, by);
+                        ctx.lineTo(bx, by + (corner.y * bracketSize));
+                    }
+                    ctx.stroke();
+                });
+
+                // ID Tag
+                ctx.fillStyle = color;
+                ctx.font = 'bold 11px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(`#${String(index + 1).padStart(3, '0')}`, node.x, node.y + node.radius + 15);
+
+                // Display Name
+                ctx.fillStyle = color;
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(member.displayName, node.x, node.y - node.radius - 8);
+            });
+
+            ctx.restore();
+        }
+
+        // Touch event handlers for mobile
+        let touchStartTime = 0;
+        let isTouching = false;
+        let lastTouchCount = 0;
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            touchStartTime = Date.now();
+            isTouching = true;
+            lastTouchCount = e.touches.length;
+
+            if (e.touches.length === 1) {
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const x = (touch.clientX - rect.left - panX) / scale;
+                const y = (touch.clientY - rect.top - panY) / scale;
+
+                const clickedNode = nodes.find(node => {
+                    const dx = x - node.x;
+                    const dy = y - node.y;
+                    return Math.sqrt(dx * dx + dy * dy) <= node.radius;
+                });
+
+                if (clickedNode) {
+                    dragNode = clickedNode;
+                    isDragging = true;
+                    showMemberDetails(clickedNode);
+                } else {
+                    isPanning = true;
+                    lastPanX = touch.clientX;
+                    lastPanY = touch.clientY;
+                }
+            } else if (e.touches.length === 2) {
+                // Pinch zoom setup
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
+            }
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+
+            if (e.touches.length === 1 && isTouching) {
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const x = (touch.clientX - rect.left - panX) / scale;
+                const y = (touch.clientY - rect.top - panY) / scale;
+
+                if (isDragging && dragNode) {
+                    dragNode.x = x;
+                    dragNode.y = y;
+                    drawNetwork();
+                } else if (isPanning) {
+                    const dx = touch.clientX - lastPanX;
+                    const dy = touch.clientY - lastPanY;
+                    panX += dx;
+                    panY += dy;
+                    lastPanX = touch.clientX;
+                    lastPanY = touch.clientY;
+                    drawNetwork();
+                }
+            } else if (e.touches.length === 2) {
+                // Pinch zoom
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (lastTouchDistance > 0) {
+                    const delta = distance / lastTouchDistance;
+                    scale *= delta;
+                    scale = Math.max(0.5, Math.min(2, scale));
+                    drawNetwork();
+                }
+
+                lastTouchDistance = distance;
+            }
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            
+            const touchDuration = Date.now() - touchStartTime;
+            
+            // Quick tap (< 200ms) = select/expand
+            if (touchDuration < 200 && lastTouchCount === 1 && !isPanning) {
+                const touch = e.changedTouches[0];
+                const rect = canvas.getBoundingClientRect();
+                const x = (touch.clientX - rect.left - panX) / scale;
+                const y = (touch.clientY - rect.top - panY) / scale;
+
+                const clickedNode = nodes.find(node => {
+                    const dx = x - node.x;
+                    const dy = y - node.y;
+                    return Math.sqrt(dx * dx + dy * dy) <= node.radius;
+                });
+
+                if (clickedNode) {
+                    clickedNode.expanded = !clickedNode.expanded;
+                    showMemberDetails(clickedNode);
+                }
+            }
+
+            isDragging = false;
+            dragNode = null;
+            isPanning = false;
+            isTouching = false;
+            lastTouchDistance = 0;
+        });
+
+        // Mouse events for desktop compatibility
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = (e.clientX - rect.left - panX) / scale;
+            const mouseY = (e.clientY - rect.top - panY) / scale;
+
+            const clickedNode = nodes.find(node => {
+                const dx = mouseX - node.x;
+                const dy = mouseY - node.y;
+                return Math.sqrt(dx * dx + dy * dy) <= node.radius;
+            });
+
+            if (clickedNode && e.button === 0) {
+                if (e.shiftKey || e.ctrlKey) {
+                    dragNode = clickedNode;
+                    isDragging = true;
+                    const offset = {
+                        x: mouseX - clickedNode.x,
+                        y: mouseY - clickedNode.y
+                    };
+                    canvas.dataset.offsetX = offset.x;
+                    canvas.dataset.offsetY = offset.y;
+                } else {
+                    showMemberDetails(clickedNode);
+                    clickedNode.expanded = !clickedNode.expanded;
+                    drawNetwork();
+                }
+            } else if (e.button === 0 || e.shiftKey) {
+                isPanning = true;
+                lastPanX = e.clientX;
+                lastPanY = e.clientY;
+                canvas.style.cursor = 'grabbing';
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = (e.clientX - rect.left - panX) / scale;
+            const mouseY = (e.clientY - rect.top - panY) / scale;
+
+            if (isPanning) {
+                const dx = e.clientX - lastPanX;
+                const dy = e.clientY - lastPanY;
+                panX += dx;
+                panY += dy;
+                lastPanX = e.clientX;
+                lastPanY = e.clientY;
+                drawNetwork();
+            } else if (isDragging && dragNode) {
+                const offsetX = parseFloat(canvas.dataset.offsetX || 0);
+                const offsetY = parseFloat(canvas.dataset.offsetY || 0);
+                dragNode.x = mouseX - offsetX;
+                dragNode.y = mouseY - offsetY;
+                drawNetwork();
+            } else {
+                // Show tooltip
+                const hoveredNode = nodes.find(node => {
+                    const dx = mouseX - node.x;
+                    const dy = mouseY - node.y;
+                    return Math.sqrt(dx * dx + dy * dy) <= node.radius;
+                });
+
+                if (hoveredNode) {
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = (e.clientX + 10) + 'px';
+                    tooltip.style.top = (e.clientY + 10) + 'px';
+                    tooltip.querySelector('h4').textContent = hoveredNode.data.name;
+                    tooltip.querySelector('p').textContent = hoveredNode.data.title;
+                    canvas.style.cursor = 'pointer';
+                } else {
+                    tooltip.style.display = 'none';
+                    canvas.style.cursor = 'grab';
+                }
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+            dragNode = null;
+            isPanning = false;
+            canvas.style.cursor = 'grab';
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            isDragging = false;
+            dragNode = null;
+            isPanning = false;
+            canvas.style.cursor = 'grab';
+            tooltip.style.display = 'none';
+        });
+
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            scale *= delta;
+            scale = Math.max(0.5, Math.min(2, scale));
+            drawNetwork();
+        });
+
+        function showMemberDetails(node) {
+            const member = node.data;
+            
+            function createLink(text) {
+                const parts = text.split('|');
+                if (parts.length === 2) {
+                    return `<a href="${parts[1]}" target="_blank" style="color: #00d9ff; text-decoration: none; border-bottom: 1px solid rgba(0, 217, 255, 0.3);">${parts[0]}</a>`;
+                }
+                return text;
+            }
+
+            let socialMediaHTML = '';
+            if (member.socialMedia) {
+                if (member.socialMedia.facebook) {
+                    socialMediaHTML += `<li><a href="${member.socialMedia.facebook}" target="_blank" style="color: #00d9ff; text-decoration: none;">Facebook →</a></li>`;
+                }
+                if (member.socialMedia.twitter) {
+                    socialMediaHTML += `<li><a href="${member.socialMedia.twitter}" target="_blank" style="color: #00d9ff; text-decoration: none;">Twitter/X →</a></li>`;
+                }
+                if (member.socialMedia.linkedin) {
+                    socialMediaHTML += `<li><a href="${member.socialMedia.linkedin}" target="_blank" style="color: #00d9ff; text-decoration: none;">LinkedIn →</a></li>`;
+                }
+            }
+
+            const websiteHTML = member.website ? 
+                `<p><a href="${member.website}" target="_blank" style="color: #ff6b00; text-decoration: none; font-weight: bold;">🔗 Official Profile Page →</a></p>` : 
+                '<p>No official website listed</p>';
+
+            // Display profile image in detail panel
+            const imageHTML = member.imageUrl ? 
+                `<img src="${member.imageUrl}" alt="${member.name}" class="profile-image" onerror="this.style.display='none'">` : 
+                '';
+
+            memberDetails.innerHTML = `
+                <div class="detail-header">
+                    ${imageHTML}
+                    <h2>${member.name}</h2>
+                    <p class="title">${member.title}</p>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Official Website</h3>
+                    ${websiteHTML}
+                </div>
+
+                ${socialMediaHTML ? `
+                <div class="detail-section">
+                    <h3>Social Media</h3>
+                    <ul>${socialMediaHTML}</ul>
+                </div>
+                ` : ''}
+
+                <div class="detail-section">
+                    <h3>Address</h3>
+                    <p>${member.addresses}</p>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Properties Owned</h3>
+                    <p>${member.properties}</p>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Education</h3>
+                    <p>${createLink(member.education)}</p>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Political Affiliation</h3>
+                    <p>${member.political} (${member.politicalSpectrum})</p>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Background</h3>
+                    <p>${member.background}</p>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Business Affiliations</h3>
+                    <ul>
+                        ${member.businessConnections.length ? member.businessConnections.map(c => `<li>${createLink(c)}</li>`).join('') : '<li>None listed</li>'}
+                    </ul>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Family Connections</h3>
+                    <ul>
+                        ${member.familyConnections.length ? member.familyConnections.map(c => `<li>${c}</li>`).join('') : '<li>None listed</li>'}
+                    </ul>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Organization/Non-Profit Affiliations</h3>
+                    <ul>
+                        ${member.affiliations.map(a => `<li>${createLink(a)}</li>`).join('')}
+                    </ul>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Voting Record</h3>
+                    <ul>
+                        ${member.voting === 'N/A' ? '<li>N/A (non-voting position)</li>' : member.voting.map(v => `<li>${v}</li>`).join('')}
+                    </ul>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Criminal Records</h3>
+                    <p>${member.criminal}</p>
+                </div>
+            `;
+
+            memberDetails.classList.add('active');
+            sidePanel.classList.remove('panel-closed');
+        }
+
+        // Control button handlers
+        document.getElementById('expandAll').addEventListener('click', () => {
+            nodes.forEach(n => n.expanded = true);
+            drawNetwork();
+        });
+
+        document.getElementById('collapseAll').addEventListener('click', () => {
+            nodes.forEach(n => n.expanded = false);
+            drawNetwork();
+        });
+
+        document.getElementById('resetView').addEventListener('click', () => {
+            scale = 1;
+            panX = 0;
+            panY = 0;
+            initializeNodes();
+        });
+
+        document.getElementById('importBtn').addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            const dataStr = JSON.stringify(councilData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'fredericksburg_council_data.json';
+            link.click();
+        });
+
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const importedData = JSON.parse(event.target.result);
+                        Object.assign(councilData, importedData);
+                        initializeNodes();
+                        alert('Data imported successfully!');
+                    } catch (error) {
+                        alert('Error importing file: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        closePanel.addEventListener('click', () => {
+            sidePanel.classList.add('panel-closed');
+            memberDetails.classList.remove('active');
+        });
+
+        sortSelect.addEventListener('change', () => {
+            initializeNodes();
+        });
+
+        // Initialize
+        window.addEventListener('load', () => {
+            resizeCanvas();
+            initializeNodes();
+        });
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+        });
+
+        // Prevent default touch behaviors
+        document.body.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+
+        // Handle orientation changes
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                resizeCanvas();
+                initializeNodes();
+            }, 100);
+        });
+    </script>
+</body>
+</html>
